@@ -34,6 +34,11 @@ typedef void *PredictorHandle;
 /*! \brief handle to NDArray list */
 typedef void *NDListHandle;
 
+
+
+
+
+
 /*!
  * \brief Get the last error happeneed.
  * \return The last error happened at the predictor.

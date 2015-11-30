@@ -9,7 +9,7 @@ SOURCES = classify.cc mxnet_predict-all.cc
 OBJS = $(SOURCES:.cc=.o)
 EXECUTABLE = classify
 
-ALL: $(EXECUTABLE)
+all: $(EXECUTABLE)
 $(EXECUTABLE): $(OBJS)
 	$(CC) $(INC) $(CFLAGS) $(OBJS) $(LIB) -o $@ 
 

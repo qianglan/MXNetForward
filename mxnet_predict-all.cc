@@ -56,6 +56,18 @@
 #include <utility>
 #include <vector>
 
+//added by qianglan
+#include <sys/time.h>
+
+double timing() {
+	double time;
+	struct timeval timmer;
+	gettimeofday(&timmer,NULL);
+    time = timmer.tv_sec*1e3+timmer.tv_usec*1e-3;
+    return time;
+}
+
+
 //===== EXPANDIND: mxnet_predict0.cc =====
 
 // mexnet.cc
@@ -11385,6 +11397,10 @@ class Operator {
                         const std::vector<TBlob> &aux_states) {
     LOG(FATAL) << "Backward is not implemented";
   }
+
+  //added by qianglan
+  double f_time;
+
 };
 
 #if DMLC_USE_CXX11
@@ -15224,7 +15240,7 @@ class GraphExecutor : public Executor {
     // variables to mutate
     std::vector<Engine::VarHandle> mutate_vars;
     // constructor
-    OpExecEntry() : exec_fun(nullptr) {}
+    OpExecEntry() : exec_fun(nullptr){}
   };
   // Information about operational node
   struct OpNode {
@@ -15543,6 +15559,10 @@ GraphExecutor::GetOpExecEntry(uint32_t nid) {
   bool is_gpu = op_node.ctx.dev_mask() == gpu::kDevMask;
   exec.exec_fun = [op, is_gpu, op_ctx_ptr, in_array, req, out_array, aux_array]
       (RunContext ctx, Engine::CallbackOnComplete on_complete) {
+	//added by qianglan
+    //profiling each kind of operation
+    double t_start = timing();// time in ms
+
     std::vector<TBlob> in_data(in_array.size());
     std::vector<TBlob> out_data(out_array.size());
     std::vector<TBlob> aux_data(aux_array.size());
@@ -15566,6 +15586,10 @@ GraphExecutor::GetOpExecEntry(uint32_t nid) {
 #endif
     }
     on_complete();
+
+	double t_end = timing();
+    op->f_time = t_end - t_start;
+
   };
   return exec;
 }
@@ -15903,6 +15927,8 @@ void GraphExecutor::RunOps(bool is_train, size_t topo_start, size_t topo_end) {
           FnProperty::kNormal);
     }
   }
+
+  Print(std::cout);
 }
 
 void GraphExecutor::Print(std::ostream &os) const {
@@ -15932,6 +15958,12 @@ void GraphExecutor::Print(std::ostream &os) const {
       }
       os << '\n';
     }
+
+    //added by qianglan
+    //output the time information
+
+
+
   }
   os << "Total " << (total_allocated_reals_ >> 18UL) <<" MB allocated\n";
   os << "Total " << total_allocated_temp_ <<" TempSpace resource requested\n";
