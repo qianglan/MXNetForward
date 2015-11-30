@@ -15961,7 +15961,8 @@ void GraphExecutor::Print(std::ostream &os) const {
 
     //added by qianglan
     //output the time information
-
+    if (graph_.nodes[nid].is_variable()) continue;
+    os << "\texecution time: " << op_nodes_[nid].op->f_time << "ms" << '\n';
 
 
   }
