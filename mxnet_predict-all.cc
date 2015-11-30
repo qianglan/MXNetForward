@@ -15939,7 +15939,7 @@ void GraphExecutor::Print(std::ostream &os) const {
     os << "Op " << i << ":" << graph_.nodes[nid].name << '\n';
     for (size_t j = 0; j < op_nodes_[nid].outputs.size(); ++j) {
       const DataEntryInfo &info = op_nodes_[nid].outputs[j];
-      os << "\toutput[" << j << "]: shape=" << info.shape;
+      os << "\toutput[" << j << "]: shape=" << info.shape << "shape size = " << info.shape.Size()/1024 << "KB";
       if (info.storage_id != GraphStorageAllocator::kBadStorageID) {
         os << ", storage_id=" << info.storage_id;
       }
