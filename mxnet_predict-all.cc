@@ -18004,6 +18004,7 @@ class ConvolutionOp : public Operator {
     CHECK_EQ(out_data.size(), 1);
     Stream<xpu> *s = ctx.get_stream<xpu>();
     Tensor<xpu, 4> data = in_data[conv::kData].get<xpu, 4, real_t>(s);
+    LOG(INFO) << data.shape_[1];
     Shape<3> wmat_shape =
         Shape3(param_.num_group,
                param_.num_filter / param_.num_group,
