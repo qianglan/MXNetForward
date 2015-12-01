@@ -1,3 +1,9 @@
+/*
+*compile cmd:gcc main.c -lrt -lOpenCL -o mul
+for now , MATRIX_A =4 is right ,other value is wrong
+*/
+
+
 #define _CRT_SECURE_NO_WARNINGS
 #define PROGRAM_FILE "matvec.cl"
 #define KERNEL_FUNC "matvec_mult"
