@@ -1,0 +1,11 @@
+HUAWEI P8:
+
+
+LESHI1 Pro: Qualcomm骁龙810 
+GPU:Adreno 430()
+OpenCL:1.2full
+
+
+XIAOMI 3:Tegra
+GPU:CUDA
+
