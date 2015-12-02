@@ -11401,6 +11401,9 @@ class Operator {
   //added by qianglan
   double f_time;
 
+  double core_time;
+  double unpack_t;
+
 };
 
 #if DMLC_USE_CXX11
@@ -15963,7 +15966,10 @@ void GraphExecutor::Print(std::ostream &os) const {
     //output the time information
     if (graph_.nodes[nid].is_variable()) continue;
     os << "\texecution time: " << op_nodes_[nid].op->f_time << "ms" << '\n';
-
+    if(graph_.nodes[nid].op->TypeString()=="Convolution") {
+    	os << "dot time in convolutionOp:" << op_nodes_[nid].op->core_time << "ms" << '\n';
+    	os << "unpack time in convolutionOp:" << op_nodes_[nid].op->unpack_t << "ms" << '\n';
+    }
 
   }
   os << "Total " << (total_allocated_reals_ >> 18UL) <<" MB allocated\n";
@@ -18027,6 +18033,8 @@ class ConvolutionOp : public Operator {
                                                Shape3(shape_dstunit_[0],
                                                       shape_dstunit_[1],
                                                       shape_dstunit_[2] * step), s);
+      double unpack_s = timing();
+
       if (param_.pad[0] == 0 && param_.pad[1] == 0) {
         temp_col = unpack_patch2col(data.Slice(i, i + step),
                                     param_.kernel[0],
@@ -18041,11 +18049,17 @@ class ConvolutionOp : public Operator {
                                     param_.stride[0],
                                     param_.stride[1]);
       }
+      double unpack_e = timing();
+      unpack_t = unpack_e - unpack_s;
+
       const index_t gstride = temp_col.size(0) / param_.num_group;
       for (uint32_t gid = 0; gid < param_.num_group; ++gid) {
         mshadow::Tensor<xpu, 2> tmpc = temp_col.Slice(gstride * gid,
                                        gstride * (gid + 1));
+        double dot_s = timing();
         temp_dst[gid] = dot(wmat[gid], tmpc);
+        double dot_e = timing();
+        core_time = dot_e - dot_s;
       }
       out.Slice(i, i + step) = swapaxis<1, 0>(reshape(temp_dst,
                                               mshadow::Shape4(param_.num_filter,
@@ -18192,6 +18206,9 @@ class ConvolutionOp : public Operator {
   mshadow::Shape<2> shape_colunit_;
   mshadow::Shape<3> shape_dstunit_;
   index_t nstep_;
+
+  double dot_time=0;
+
 };  // class ConvolutionOp
 
 template<typename xpu>
