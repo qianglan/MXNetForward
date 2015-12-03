@@ -13,7 +13,10 @@
 #endif
 
 #endif
-
+/*
+include the new gemm
+*/
+#include "mygemm.h"
 #include <algorithm>
 #include <array>
 #include <assert.h>
@@ -3639,14 +3642,14 @@ namespace expr {
 namespace type {
 // type expression type are defined as bitmask
 // subtype relationshop kRValue < kMapper < kPull < kComplex
-/*! 
+/*!
  * \brief this expression directly correspnds to a data class,
- *   can be used to assign data 
+ *   can be used to assign data
  */
 const int kRValue = 0;
-/*! 
+/*!
  * \brief expression contains element-wise tensor operations,
- *   map a expression to same shape 
+ *   map a expression to same shape
  */
 const int kMapper = 1;
 /*!
@@ -3689,7 +3692,7 @@ struct Exp {
   }
 };
 /*!
- * \brief scalar expression 
+ * \brief scalar expression
  * \tparam DType the data type of the scalar
  */
 template<typename DType>
@@ -3890,11 +3893,11 @@ MakeExp(const Exp<TA, DType, ta> &lhs, const Exp<TB, DType, tb> &rhs) {
                       (ta|tb|type::kMapper)>(lhs.self(), rhs.self());
 }
 /*!
- * \brief short hand for MakeExp, usage F<op>(lhs, rhs). create a binary operation expression 
+ * \brief short hand for MakeExp, usage F<op>(lhs, rhs). create a binary operation expression
  * \param lhs left operand
  * \param rhs right operand
  * \return the result expression
- * \tparam binary operator 
+ * \tparam binary operator
  * \tparam TA lhs expression
  * \tparam ta lhs expression type
  * \tparam TB rhs expression
@@ -3955,11 +3958,11 @@ inline UnaryMapExp<OP, TA, DType, (ta|type::kMapper)>
 MakeExp(const Exp<TA, DType, ta> &src) {
   return UnaryMapExp<OP, TA, DType, (ta|type::kMapper)>(src.self());
 }
-/*! 
- * \brief short hand for MakeExp, usage F<op>(src), create a unary operation expression 
+/*!
+ * \brief short hand for MakeExp, usage F<op>(src), create a unary operation expression
  * \param src source expression
  * \return the result expression
- * \tparam operator 
+ * \tparam operator
  * \tparam TA source expression
  * \tparam ta source expression type
  * \sa mshadow::op
@@ -6292,9 +6295,10 @@ struct BLASEngine<cpu> {
                           bool transa, bool transb,
                           int m, int n, int k, float alpha,
                           const float *A, int lda, const float *B, int ldb,
-                          float beta, float *C, int ldc) {
-    cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
+                      		float beta, float *C, int ldc) {
+    	cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
                 m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+
   }
   inline static void gemm(Stream<cpu> *stream,
                           bool transa, bool transb,
@@ -6360,7 +6364,13 @@ struct BLASEngine<cpu> {
                           int m, int n, int k, float alpha,
                           const float *A, int lda, const float *B, int ldb,
                           float beta, float *C, int ldc) {
-    LOG(FATAL) << "Not implmented!";
+		/*
+		LOG(FATAL) << "Not implmented!";
+		LOG(INFO) << "A's  col num : k = " << k ;
+		LOG(INFO) << "A's  row num : m = " << m ;
+		LOG(INFO) << "A's  col num : lda = " << lda ;
+		*/
+		my_sgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc);
   }
   inline static void gemm(Stream<cpu> *stream,
                           bool transa, bool transb,
@@ -7158,9 +7168,9 @@ namespace expr {
  * output: Tensor<Device,dimdst> oshape[a1],oshape[a2] = ishape[a2],oshape[a1]
  *
  * \tparam SrcExp type of source expression
- * \tparam DType the type of elements 
+ * \tparam DType the type of elements
  * \tparam dimsrc source dimension, assert a1 > a2
- * \tparam m_a1 one dimension to be swapped, encoded by dimsrc - a1 
+ * \tparam m_a1 one dimension to be swapped, encoded by dimsrc - a1
  * \tparam a2 second dimension to be swapped, encoded by a2
  */
 template<typename SrcExp, typename DType, int dimsrc, int m_a1, int a2>
@@ -7184,7 +7194,7 @@ struct SwapAxisExp:
  * \tparam a1 higher dimension to be swapped, assert a1 > a2
  * \tparam a2 lower dimension to be swapped
  * \tparam SrcExp source expression
- * \tparam DType the type of elements 
+ * \tparam DType the type of elements
  * \tparam etype source expression type
  */
 template<int a1, int a2, typename SrcExp, typename DType, int etype>
@@ -18244,7 +18254,7 @@ class ConvolutionProp : public OperatorProperty {
     }
     const TShape &dshape = (*in_shape)[conv::kData];
     if (dshape.ndim() ==  0) return false;
-    //LOG(INFO) << "dshape.ndim: " << dshape.ndim(); 
+    //LOG(INFO) << "dshape.ndim: " << dshape.ndim();
     CHECK_EQ(dshape.ndim(), 4) \
         << "Input data should be 4D in batch-num_filter-y-x";
     SHAPE_ASSIGN_CHECK(*in_shape,
@@ -23995,7 +24005,7 @@ int MXPredCreate(const char* symbol_json_str,
     }
   }
   LOG(INFO) << "load params sucess!";
-  
+
   // shape inference and bind
   std::unordered_map<std::string, TShape> known_shape;
   for (mx_uint i = 0; i < num_input_nodes; ++i) {
@@ -24039,7 +24049,7 @@ int MXPredCreate(const char* symbol_json_str,
   }
   ret->arg_arrays = arg_arrays;
   LOG(INFO) << "shape inference sucess!";
-  
+
   // bind
   {
     std::vector<NDArray> grad_store(arg_arrays.size());
@@ -24265,5 +24275,3 @@ void MXAPISetLastError(const char* msg) {
 //===== EXPANDED: ../src/c_api/c_api_error.cc =====
 
 //===== EXPANDED: mxnet_predict0.cc =====
-
-

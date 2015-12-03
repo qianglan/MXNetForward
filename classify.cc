@@ -114,13 +114,9 @@ int main(){
 	int getoutput_result = MXPredGetOutput(handle,0,output,size);
 	cout << "getoutput_result: " << getoutput_result << endl;
 	//for (m=0;m<size;m++)
-	//	cout << "output[" << m << "]: " << output[m] << endl;
+	cout << "output[" << 0 << "]: " << output[0] << endl;
 
 	//free the predictor
 	int free_result = MXPredFree(handle);
 	return 0;
 }
-
-
-
-
