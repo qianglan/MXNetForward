@@ -70,6 +70,147 @@ double timing() {
     return time;
 }
 
+//added by shiyang
+#include <CL/cl.h>
+#include <fstream>
+//kernel函数
+std::string convertToString(const char *filename)//将kernel源码，即自己写的并行化的函数，转化成字符串
+{
+    size_t size;
+    char*  str;
+    std::string s;
+
+    std::fstream f(filename, (std::fstream::in | std::fstream::binary));
+
+    if(f.is_open())
+    {
+        size_t fileSize;
+        f.seekg(0, std::fstream::end);
+        size = fileSize = (size_t)f.tellg();
+        f.seekg(0, std::fstream::beg);
+
+        str = new char[size+1];
+        if(!str)
+        {
+            f.close();
+            //std::cout << "Memory allocation failed";
+            return NULL;
+        }
+
+        f.read(str, fileSize);
+        f.close();
+        str[size] = '\0';
+
+        s = str;
+        delete[] str;
+        return s;
+    }
+    else
+    {
+        //std::cout << "\nFile containg the kernel code(\".cl\") not found. Please copy the required file in the folder containg the executable.\n";
+        exit(1);
+    }
+    return NULL;
+}
+//global OpenCL variables
+cl_int clErrNum;
+cl_platform_id clplatform;
+cl_device_id cldevice;
+cl_int clstatus;
+cl_uint clmaxDims;
+cl_event clevents[2];
+size_t clglobalThreads[1];
+size_t cllocalThreads[1];
+size_t clmaxWorkGroupSize;
+size_t clmaxWorkItemSizes[3];
+void initOpenCL(){
+	clErrNum = clGetPlatformIDs(1,&clplatform,NULL);
+	if(clErrNum < 0)
+	{
+		std::cout<<"获取设备失败 : "<< (int )clErrNum <<std::endl;
+		return;
+	}
+	clErrNum = clGetDeviceIDs(clplatform,CL_DEVICE_TYPE_CPU,1,&cldevice,NULL);
+
+	clstatus = clGetDeviceInfo(cldevice, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), (void*)&clmaxWorkGroupSize, NULL);
+	if(clstatus != CL_SUCCESS)
+	{
+			std::cout << "Error: Getting Device Info  1. (clGetDeviceInfo)\n";
+			return;
+	}
+	clstatus = clGetDeviceInfo(cldevice, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(cl_uint), (void*)&clmaxDims, NULL);
+	if(clstatus != CL_SUCCESS)
+	{
+			std::cout << "Error: Getting Device Info  2. (clGetDeviceInfo)\n";
+			return;
+	}
+	clstatus = clGetDeviceInfo(cldevice, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(size_t)*clmaxDims,(void*)clmaxWorkItemSizes,NULL);
+	if(clstatus != CL_SUCCESS)
+	{
+			std::cout << "Error: Getting Device Info  3. (clGetDeviceInfo)\n";
+			return;
+	}
+	std::cout << "/* message */ " << "maxWorkItemSizes : "<< clmaxWorkItemSizes << std::endl;
+	std::cout << "/* message */ " << "maxDims : "<< clmaxDims << std::endl;
+	std::cout << "/* message */ " << "maxWorkGroupSize : "<< (int)clmaxWorkGroupSize << std::endl;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 //===== EXPANDIND: mxnet_predict0.cc =====
 
@@ -23975,6 +24116,9 @@ int MXPredCreate(const char* symbol_json_str,
                  const mx_uint* input_shape_indptr,
                  const mx_uint* input_shape_data,
                  PredictorHandle* out) {
+	//added by shiyang
+	initOpenCL();
+	LOG(INFO) << "INIT OpenCL Sucess!";
   MXAPIPredictor* ret = new MXAPIPredictor();
   API_BEGIN();
   Symbol sym;

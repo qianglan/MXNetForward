@@ -2,48 +2,33 @@
  * compile cmd:
  * g++ -std=c++11 `pkg-config --cflags opencv` classfiy.cc mxnet_predict-all.cc `pkg-config --libs opencv` -lopenblas -o classfiy
  */
-
-
 #include "c_predict_api.h"
 #include <fstream>
 #include <sstream>
 #include <iostream>
 #include <string>
-#include <highgui.h>
 using namespace std;
 
-const float mean_color = 117.0;
 float colors[3*224*224];
-
-int readImage()
+int loadrgb()
 {
-	cv::Mat inputImage = cv::imread("cd.bmp");
-	int imageHeight = inputImage.rows;
-	int imageWidth = inputImage.cols;
-	cout << "Height: " << imageHeight << endl;
-	cout << "Width: " << imageWidth << endl;
-	uchar* inputImageData = inputImage.data;
-
-	for (int i=0;i<imageHeight;i++){
-		for(int j=0;j<imageWidth;j++){
-			int index = 3*(i*imageWidth+j);
-			int b = inputImageData[index];
-			int g = inputImageData[index+1];
-			int r = inputImageData[index+2];
-			colors[0*224*224+i*imageHeight+imageWidth]=(float)r-mean_color;
-			colors[1*224*224+i*imageHeight+imageWidth]=(float)g-mean_color;
-			colors[2*224*224+i*imageHeight+imageWidth]=(float)b-mean_color;
-		}
+	ifstream out;
+	out.open("rgb.txt",ios::in);
+	string temp;
+	int i=0;
+	while(getline(out,temp)){
+		//cout << atof(temp.c_str())<< " ";
+		colors[i]=atof(temp.c_str());
+		i++;
 	}
+	//cout << i << endl;
 	return 0;
 }
 
 
-
 int main(){
-	/*
-	 * init the predictor
-	 */
+
+
 	//read symbol
 	ifstream ifile1("./raw/symbol.json");
 	ostringstream buf1;
@@ -88,7 +73,7 @@ int main(){
 		cout << MXGetLastError() << endl;
 
 	//prepare the image data
-	int x=readImage();
+	int x=loadrgb();
 	const char* key="data";
 	mx_uint imagearraysize=3*224*224;
 	int setInput_result = MXPredSetInput(handle,key,colors,imagearraysize);
@@ -118,5 +103,6 @@ int main(){
 
 	//free the predictor
 	int free_result = MXPredFree(handle);
+
 	return 0;
 }
