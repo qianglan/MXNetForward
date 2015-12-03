@@ -1,9 +1,9 @@
 CC = g++
 CFLAGS += -g -std=c++11 -Wno-unknown-pragmas -Wall -DMSHADOW_STAND_ALONE 
 
-INC += `pkg-config --cflags opencv`
+INC += 
 
-LIB += `pkg-config --libs opencv` -lblas -lrt -lOpenCL
+LIB += -lblas -lrt -lOpenCL
 
 SOURCES = classify.cc mxnet_predict-all.cc
 OBJS = $(SOURCES:.cc=.o)

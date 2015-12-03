@@ -13,7 +13,7 @@ float colors[3*224*224];
 int loadrgb()
 {
 	ifstream out;
-	out.open("rgb.txt",ios::in);
+	out.open("./ReadImage/rgb.txt",ios::in);
 	string temp;
 	int i=0;
 	while(getline(out,temp)){

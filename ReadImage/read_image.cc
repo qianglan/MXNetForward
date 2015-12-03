@@ -35,8 +35,8 @@ void save2file(){
   ofstream inFile;
   inFile.open("rgb.txt",ios::trunc);
   int i=0;
-	for (i=0;i<3*224*224;i++)
-    cout << colors[i] << " ";
+	//for (i=0;i<3*224*224;i++)
+    //cout << colors[i] << " ";
   for (i=0;i<3*224*224;i++)
     inFile << colors[i] << "\n";
   inFile.close();
