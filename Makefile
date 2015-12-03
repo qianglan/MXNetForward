@@ -3,7 +3,7 @@ CFLAGS += -g -std=c++11 -Wno-unknown-pragmas -Wall -DMSHADOW_STAND_ALONE
 
 INC += `pkg-config --cflags opencv`
 
-LIB += `pkg-config --libs opencv` -lblas
+LIB += `pkg-config --libs opencv` -lblas -lrt -lOpenCL
 
 SOURCES = classify.cc mxnet_predict-all.cc
 OBJS = $(SOURCES:.cc=.o)
@@ -11,11 +11,10 @@ EXECUTABLE = classify
 
 all: $(EXECUTABLE)
 $(EXECUTABLE): $(OBJS)
-	$(CC) $(INC) $(CFLAGS) $(OBJS) $(LIB) -o $@ 
+	$(CC) $(INC) $(CFLAGS) $(OBJS) $(LIB) -o $@
 
 .cc.o:
 	$(CC) $(INC) $(CFLAGS) $(LIB) -c $^ -o $@
 
 clean:
 	rm -rf $(OBJS) $(EXECUTABLE)
- 
