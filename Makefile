@@ -1,5 +1,5 @@
 CC = g++
-CFLAGS += -g -std=c++11 -Wno-unknown-pragmas -Wall #-DMSHADOW_STAND_ALONE
+CFLAGS += -g -std=c++11 -Wno-unknown-pragmas -Wall -DMSHADOW_STAND_ALONE
 
 INC += `pkg-config --cflags opencv`
 
