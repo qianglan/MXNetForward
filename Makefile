@@ -1,7 +1,7 @@
 CC = g++
-CFLAGS += -g -std=c++11 -Wno-unknown-pragmas -Wall -DMSHADOW_STAND_ALONE 
+CFLAGS += -g -std=c++11 -Wno-unknown-pragmas -Wall 
 
-INC += 
+INC +=
 
 LIB += -lblas -lrt -lOpenCL
 

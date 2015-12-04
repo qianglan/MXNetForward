@@ -72,139 +72,112 @@ double timing() {
 
 //added by shiyang
 #include <CL/cl.h>
-#include <fstream>
-//kernel函数
-std::string convertToString(const char *filename)//将kernel源码，即自己写的并行化的函数，转化成字符串
-{
-    size_t size;
-    char*  str;
-    std::string s;
+// name of the file which contais the clkernel function
+#define PROGRAM_FILE "kernels_sgemm.cl"
+// name of the clkernel function
+#define KERNEL_FUNC "myGEMM"
 
-    std::fstream f(filename, (std::fstream::in | std::fstream::binary));
-
-    if(f.is_open())
-    {
-        size_t fileSize;
-        f.seekg(0, std::fstream::end);
-        size = fileSize = (size_t)f.tellg();
-        f.seekg(0, std::fstream::beg);
-
-        str = new char[size+1];
-        if(!str)
-        {
-            f.close();
-            //std::cout << "Memory allocation failed";
-            return NULL;
-        }
-
-        f.read(str, fileSize);
-        f.close();
-        str[size] = '\0';
-
-        s = str;
-        delete[] str;
-        return s;
-    }
-    else
-    {
-        //std::cout << "\nFile containg the kernel code(\".cl\") not found. Please copy the required file in the folder containg the executable.\n";
-        exit(1);
-    }
-    return NULL;
+//some functions in OpenCL
+/**
+*  Find a GPU or CPU (cldevice) which is available for the host returning
+* the created cldevice
+*/
+cl_device_id create_device() {
+   cl_platform_id platform;
+   cl_device_id dev;
+   cl_int clerr;
+   // Identify a platform
+   clerr = clGetPlatformIDs(1, &platform, NULL);
+   if(clerr < 0) {
+      perror("Couldn't identify a platform");
+      exit(1);
+   }
+   // Try to access a GPU
+   clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &dev, NULL);
+   if(clerr == CL_DEVICE_NOT_FOUND) {
+      printf("GPU not found , using CPU\n");
+      // if can't. Try to access a CPU
+      clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &dev, NULL);
+   }
+   // If there's an error finish the clprogram
+   if(clerr < 0) {
+      perror("Couldn't access any devices");
+      exit(1);
+   }
+   // return the cldevice id
+   return dev;
 }
-//global OpenCL variables
-cl_int clErrNum;
-cl_platform_id clplatform;
+
+
+/**
+*  Create a clprogram (clkernel function) from a file, returning it
+* compiled to the caller.
+*  Receives a opencl clcontext, a cldevice ID and the name of the file
+* which contains the clprogram.
+*/
+cl_program build_program(cl_context ctx, cl_device_id dev, const char* filename) {
+
+   cl_program clprogram;
+   FILE *program_handle;
+   char *program_buffer, *program_log;
+   size_t program_size, log_size;
+   int clerr;
+
+   // Read clprogram file and place its content into a buffer
+   program_handle = fopen(filename, "r");
+   if(program_handle == NULL) {
+      perror("Couldn't find the clprogram file");
+      exit(1);
+   }
+   fseek(program_handle, 0, SEEK_END);
+   // gets the clprogram size
+   program_size = ftell(program_handle);
+   rewind(program_handle);
+   program_buffer = (char*)malloc(program_size + 1);
+   // sets the end of the buffer
+   program_buffer[program_size] = '\0';
+   // reads the file content and close it
+   fread(program_buffer, sizeof(char), program_size, program_handle);
+   fclose(program_handle);
+
+   // Create clprogram from file
+   clprogram = clCreateProgramWithSource(ctx, 1,
+      (const char**)&program_buffer, &program_size, &clerr);
+   if(clerr < 0) {
+      perror("Couldn't create the clprogram");
+      exit(1);
+   }
+   // deallocate the clprogram buffer
+   free(program_buffer);
+
+   // Build the read clprogram
+   clerr = clBuildProgram(clprogram, 0, NULL, NULL, NULL, NULL);
+   if(clerr < 0) {
+
+      // Find size of log and print to std output
+      clGetProgramBuildInfo(clprogram, dev, CL_PROGRAM_BUILD_LOG,
+            0, NULL, &log_size);
+      program_log = (char*) malloc(log_size + 1);
+      program_log[log_size] = '\0';
+      clGetProgramBuildInfo(clprogram, dev, CL_PROGRAM_BUILD_LOG,
+            log_size + 1, program_log, NULL);
+      // prints the log with the error informations
+      printf("%s\n", program_log);
+      free(program_log);
+      exit(1);
+   }
+
+   return clprogram;
+}
+
+
+// Declaration of OpenCL structures (global)
 cl_device_id cldevice;
-cl_int clstatus;
-cl_uint clmaxDims;
-cl_event clevents[2];
-size_t clglobalThreads[1];
-size_t cllocalThreads[1];
-size_t clmaxWorkGroupSize;
-size_t clmaxWorkItemSizes[3];
-void initOpenCL(){
-	clErrNum = clGetPlatformIDs(1,&clplatform,NULL);
-	if(clErrNum < 0)
-	{
-		std::cout<<"获取设备失败 : "<< (int )clErrNum <<std::endl;
-		return;
-	}
-	clErrNum = clGetDeviceIDs(clplatform,CL_DEVICE_TYPE_CPU,1,&cldevice,NULL);
-
-	clstatus = clGetDeviceInfo(cldevice, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), (void*)&clmaxWorkGroupSize, NULL);
-	if(clstatus != CL_SUCCESS)
-	{
-			std::cout << "Error: Getting Device Info  1. (clGetDeviceInfo)\n";
-			return;
-	}
-	clstatus = clGetDeviceInfo(cldevice, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(cl_uint), (void*)&clmaxDims, NULL);
-	if(clstatus != CL_SUCCESS)
-	{
-			std::cout << "Error: Getting Device Info  2. (clGetDeviceInfo)\n";
-			return;
-	}
-	clstatus = clGetDeviceInfo(cldevice, CL_DEVICE_MAX_WORK_ITEM_SIZES, sizeof(size_t)*clmaxDims,(void*)clmaxWorkItemSizes,NULL);
-	if(clstatus != CL_SUCCESS)
-	{
-			std::cout << "Error: Getting Device Info  3. (clGetDeviceInfo)\n";
-			return;
-	}
-	std::cout << "/* message */ " << "maxWorkItemSizes : "<< clmaxWorkItemSizes << std::endl;
-	std::cout << "/* message */ " << "maxDims : "<< clmaxDims << std::endl;
-	std::cout << "/* message */ " << "maxWorkGroupSize : "<< (int)clmaxWorkGroupSize << std::endl;
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+cl_context clcontext;
+cl_program clprogram;
+cl_kernel clkernel;
+cl_command_queue clqueue;
+cl_int cli, clj, clerr;
 
 
 
@@ -6437,9 +6410,124 @@ struct BLASEngine<cpu> {
                           int m, int n, int k, float alpha,
                           const float *A, int lda, const float *B, int ldb,
                       		float beta, float *C, int ldc) {
-    	cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
-                m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 
+			//LOG(INFO) << "cblas sgemm !";
+			LOG(INFO) << "===============================================";
+			LOG(INFO) << "transa: " << transa << " transb: " << transb;
+			LOG(INFO) << "M: " <<m << " N: " << n << " K: " << k;
+			LOG(INFO) << "Alpha: " << alpha << " Beta: " << beta;
+			LOG(INFO) << "===============================================";
+			if ( transa == true ){
+    		cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
+                	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+			}
+			/*added by shiyang
+			*using OpenCL to do sgemm
+			*/
+
+
+
+			else {
+				// variables to the number of threads in one block
+				// and total numbers of threads, respectively
+				unsigned long int local_size, global_size;
+				// the vector which will be send to the devices
+		    cl_mem d_m1, d_m2, d_res;
+
+				// Create a cldevice and the clcontext
+		    cldevice = create_device();
+		    clcontext = clCreateContext(NULL, 1, &cldevice, NULL, NULL, &clerr);
+		    if(clerr < 0) {
+		       perror("Couldn't create a clcontext");
+		       exit(1);
+		    }
+				// creates a clprogram and build it
+		    clprogram = build_program(clcontext, cldevice, PROGRAM_FILE);
+				// Create the data buffers size
+		    unsigned long int m1size = sizeof(float)*m*k;
+		    unsigned long int m2size = sizeof(float)*n*k;
+		    unsigned long int res_size = sizeof(float)*m*n;
+
+				// defines the total number of threads
+		    global_size = m*n;
+		    // defines the number of threads in one block
+		    local_size = m;
+
+				float* temp_a = (float*) A;
+				float* temp_b = (float*) B;
+				float* temp_c = (float*) C;
+
+				// create the data buffers to be sent to devices
+		    d_m1 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
+		          CL_MEM_COPY_HOST_PTR, m1size, temp_a, &clerr);
+		    d_m2 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
+		          CL_MEM_COPY_HOST_PTR, m2size, temp_b, &clerr);
+		    d_res = clCreateBuffer(clcontext, CL_MEM_READ_WRITE |
+		          CL_MEM_COPY_HOST_PTR, res_size, temp_c, &clerr);
+		    if(clerr < 0) {
+		       perror("Couldn't create a buffer");
+		       exit(1);
+		    };
+
+				// Create a command clqueue
+		    clqueue = clCreateCommandQueue(clcontext, cldevice, 0, &clerr);
+		    if(clerr < 0) {
+		       perror("Couldn't create a command clqueue");
+		       exit(1);
+		    };
+
+				// Create a clkernel
+		    clkernel = clCreateKernel(clprogram, KERNEL_FUNC, &clerr);
+		    if(clerr < 0) {
+		       perror("Couldn't create a clkernel ^^^^");
+					 LOG(INFO) << "the error num is clerr = " << clerr;
+		       exit(1);
+		    };
+				const int M = m;
+				const int N = n;
+				const int K = k;
+
+				int ta=0;
+				if (transa == true) ta=1;
+				clerr = clSetKernelArg(clkernel, 0, sizeof(cl_int),(void*) &M);
+		    clerr |= clSetKernelArg(clkernel, 1, sizeof(cl_int),(void*) &N);
+		    clerr |= clSetKernelArg(clkernel, 2, sizeof(cl_int),(void*) &K);
+				clerr |= clSetKernelArg(clkernel, 3, sizeof(cl_mem), &d_m1);
+		    clerr |= clSetKernelArg(clkernel, 4, sizeof(cl_mem), &d_m2);
+				clerr |= clSetKernelArg(clkernel, 5, sizeof(cl_mem), &d_res);
+				clerr |= clSetKernelArg(clkernel, 6, sizeof(cl_int),(void*) &ta);
+				if(clerr < 0) {
+		       perror("Couldn't create a clkernel argument");
+		       exit(1);
+		    }
+
+				// Enqueue the created clkernel
+		    clerr = clEnqueueNDRangeKernel(clqueue, clkernel, 1, NULL, &global_size,
+		          &local_size, 0, NULL, NULL);
+		    if(clerr < 0) {
+		       perror("Couldn't enqueue the clkernel PORRA");
+					 LOG(INFO) << "the error num is clerr = " << clerr;
+		       exit(1);
+		    }
+				LOG(INFO) << " clEnqueueNDRangeKernel success " ;
+				// Read the clkernel's output
+		    clerr = clEnqueueReadBuffer(clqueue, d_res, CL_TRUE, 0,
+		          res_size, C, 0, NULL, NULL);
+		    if(clerr < 0) {
+		       perror("Couldn't read the buffer");
+		       exit(1);
+		    }
+				LOG(INFO) << " clEnqueueReadBuffer success " ;
+				// Deallocating resources
+		    clReleaseKernel(clkernel);
+		    clReleaseMemObject(d_m1);
+		    clReleaseMemObject(d_m2);
+		    clReleaseMemObject(d_res);
+		    clReleaseCommandQueue(clqueue);
+		    clReleaseProgram(clprogram);
+		    clReleaseContext(clcontext);
+
+			}
   }
   inline static void gemm(Stream<cpu> *stream,
                           bool transa, bool transb,
@@ -6505,14 +6593,12 @@ struct BLASEngine<cpu> {
                           int m, int n, int k, float alpha,
                           const float *A, int lda, const float *B, int ldb,
                           float beta, float *C, int ldc) {
-		/*
+
 		LOG(FATAL) << "Not implmented!";
-		LOG(INFO) << "A's  col num : k = " << k ;
-		LOG(INFO) << "A's  row num : m = " << m ;
-		LOG(INFO) << "A's  col num : lda = " << lda ;
-		*/
-		my_sgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc);
+
+
   }
+
   inline static void gemm(Stream<cpu> *stream,
                           bool transa, bool transb,
                           int m, int n, int k, double alpha,
@@ -24116,9 +24202,6 @@ int MXPredCreate(const char* symbol_json_str,
                  const mx_uint* input_shape_indptr,
                  const mx_uint* input_shape_data,
                  PredictorHandle* out) {
-	//added by shiyang
-	initOpenCL();
-	LOG(INFO) << "INIT OpenCL Sucess!";
   MXAPIPredictor* ret = new MXAPIPredictor();
   API_BEGIN();
   Symbol sym;

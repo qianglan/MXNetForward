@@ -68,7 +68,7 @@ int main(){
 	const mx_uint input_shape_data[4]={1,3,224,224};
 	PredictorHandle handle = 0;
 	int create_result =MXPredCreate(symbol_json,params,param_buf_size,dev_type,dev_id,num_input_nodes,input_keys,input_shape_indptr,input_shape_data,&handle);
-	cout << "create_result = " << create_result << endl;
+	//cout << "create_result = " << create_result << endl;
 	if (create_result!=0)
 		cout << MXGetLastError() << endl;
 
@@ -77,19 +77,19 @@ int main(){
 	const char* key="data";
 	mx_uint imagearraysize=3*224*224;
 	int setInput_result = MXPredSetInput(handle,key,colors,imagearraysize);
-	cout << "setinput_result: " << setInput_result << endl;
+//	cout << "setinput_result: " << setInput_result << endl;
 	if (setInput_result!=0)
 			cout << MXGetLastError() << endl;
 
 	//begin the forward
 	int forward_result=MXPredForward(handle);
-	cout << "forward_result: "<<forward_result << endl;
+	//cout << "forward_result: "<<forward_result << endl;
 
 	//get the output
 	mx_uint *shape=0;
 	mx_uint shape_len;
 	int getoutputshape_result = MXPredGetOutputShape(handle,0,&shape,&shape_len);
-	cout << "getoutputshape_result: " << getoutputshape_result << endl;
+	//cout << "getoutputshape_result: " << getoutputshape_result << endl;
 
 	//get output
 	size_t size=1;
@@ -97,9 +97,9 @@ int main(){
 	for (m=0;m<shape_len;++m) size*=shape[m];
 	float output[size];
 	int getoutput_result = MXPredGetOutput(handle,0,output,size);
-	cout << "getoutput_result: " << getoutput_result << endl;
-	//for (m=0;m<size;m++)
-	cout << "output[" << 0 << "]: " << output[0] << endl;
+	//cout << "getoutput_result: " << getoutput_result << endl;
+	for (m=0;m<100;m++)
+	cout << "output[" << m << "]: " << output[m] << endl;
 
 	//free the predictor
 	int free_result = MXPredFree(handle);
