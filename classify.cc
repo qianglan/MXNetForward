@@ -7,6 +7,7 @@
 #include <sstream>
 #include <iostream>
 #include <string>
+#include <algorithm>
 using namespace std;
 
 float colors[3*224*224];
@@ -24,6 +25,16 @@ int loadrgb()
 	//cout << i << endl;
 	return 0;
 }
+//get the top N result
+void top5(float* a){
+	sort(a,a+1000);
+	cout << "top1:" << a[999] << endl;
+	cout << "top2:" << a[998] << endl;
+	cout << "top3:" << a[997] << endl;
+	cout << "top4:" << a[996] << endl;
+	cout << "top5:" << a[995] << endl;
+}
+
 
 
 int main(){
@@ -99,9 +110,7 @@ int main(){
 	int getoutput_result = MXPredGetOutput(handle,0,output,size);
 	//cout << "getoutput_result: " << getoutput_result << endl;
 	cout << "+++++++  test output   +++++++" << endl;
-	for (m=0;m<10;m++)
-		cout << "output[" << m << "]: " << output[m] <<"  ";
-  cout << endl;
+	top5(output);
 	//free the predictor
 	int free_result = MXPredFree(handle);
 
