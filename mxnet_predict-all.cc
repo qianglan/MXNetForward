@@ -95,7 +95,7 @@ cl_device_id create_device() {
    // Try to access a GPU
    clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &dev, NULL);
    if(clerr == CL_DEVICE_NOT_FOUND) {
-      printf("GPU not found , using CPU\n");
+      //printf("GPU not found , using CPU\n");
       // if can't. Try to access a CPU
       clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &dev, NULL);
    }
@@ -6412,21 +6412,23 @@ struct BLASEngine<cpu> {
                       		float beta, float *C, int ldc) {
 
 			//LOG(INFO) << "cblas sgemm !";
+			/*
 			LOG(INFO) << "===============================================";
 			LOG(INFO) << "transa: " << transa << " transb: " << transb;
 			LOG(INFO) << "M: " <<m << " N: " << n << " K: " << k;
 			LOG(INFO) << "Alpha: " << alpha << " Beta: " << beta;
 			LOG(INFO) << "===============================================";
+			*/
+			LOG(INFO) << "================= SGEMM =======================";
 			if ( transa == true ){
     		cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
                 	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+				LOG(INFO) << "the C[" << 0 << "] in OpenCL is " << C[0];
 			}
+
 			/*added by shiyang
 			*using OpenCL to do sgemm
 			*/
-
-
-
 			else {
 				// variables to the number of threads in one block
 				// and total numbers of threads, respectively
@@ -6509,15 +6511,16 @@ struct BLASEngine<cpu> {
 					 LOG(INFO) << "the error num is clerr = " << clerr;
 		       exit(1);
 		    }
-				LOG(INFO) << " clEnqueueNDRangeKernel success " ;
+				//LOG(INFO) << " clEnqueueNDRangeKernel success " ;
 				// Read the clkernel's output
 		    clerr = clEnqueueReadBuffer(clqueue, d_res, CL_TRUE, 0,
 		          res_size, C, 0, NULL, NULL);
+				LOG(INFO) << "the C[" << 0 << "] in OpenCL is " << C[0];
 		    if(clerr < 0) {
 		       perror("Couldn't read the buffer");
 		       exit(1);
 		    }
-				LOG(INFO) << " clEnqueueReadBuffer success " ;
+				//LOG(INFO) << " clEnqueueReadBuffer success " ;
 				// Deallocating resources
 		    clReleaseKernel(clkernel);
 		    clReleaseMemObject(d_m1);
@@ -6526,8 +6529,9 @@ struct BLASEngine<cpu> {
 		    clReleaseCommandQueue(clqueue);
 		    clReleaseProgram(clprogram);
 		    clReleaseContext(clcontext);
-
 			}
+
+
   }
   inline static void gemm(Stream<cpu> *stream,
                           bool transa, bool transb,

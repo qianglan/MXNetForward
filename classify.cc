@@ -98,9 +98,10 @@ int main(){
 	float output[size];
 	int getoutput_result = MXPredGetOutput(handle,0,output,size);
 	//cout << "getoutput_result: " << getoutput_result << endl;
-	for (m=0;m<100;m++)
-	cout << "output[" << m << "]: " << output[m] << endl;
-
+	cout << "+++++++  test output   +++++++" << endl;
+	for (m=0;m<10;m++)
+		cout << "output[" << m << "]: " << output[m] <<"  ";
+  cout << endl;
 	//free the predictor
 	int free_result = MXPredFree(handle);
 
