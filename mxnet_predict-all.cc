@@ -179,6 +179,33 @@ cl_kernel clkernel;
 cl_command_queue clqueue;
 cl_int cli, clj, clerr;
 
+void initOpenCL(){
+	// Create a cldevice and the clcontext
+	cldevice = create_device();
+	clcontext = clCreateContext(NULL, 1, &cldevice, NULL, NULL, &clerr);
+	if(clerr < 0) {
+		 perror("Couldn't create a clcontext");
+		 exit(1);
+	}
+	// creates a clprogram and build it
+	clprogram = build_program(clcontext, cldevice, PROGRAM_FILE);
+	// Create a command clqueue
+	clqueue = clCreateCommandQueue(clcontext, cldevice, 0, &clerr);
+	if(clerr < 0) {
+
+		 perror("Couldn't create a command clqueue");
+		 exit(1);
+	}
+
+	// Create a clkernel
+	clkernel = clCreateKernel(clprogram, KERNEL_FUNC, &clerr);
+	if(clerr < 0) {
+		 perror("Couldn't create a clkernel ^^^^");
+		 //LOG(INFO) << "the error num is clerr = " << clerr;
+		 exit(1);
+	}
+}
+
 
 
 
@@ -6410,8 +6437,9 @@ struct BLASEngine<cpu> {
                           int m, int n, int k, float alpha,
                           const float *A, int lda, const float *B, int ldb,
                       		float beta, float *C, int ldc) {
-			LOG(INFO) << "================= SGEMM =======================";
+
 			if ( transa==true ){
+				LOG(INFO) << "================= SGEMM CBLAS=======================";
     		cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
                 	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 				//my_sgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc);
@@ -6421,6 +6449,7 @@ struct BLASEngine<cpu> {
 			*using OpenCL to do sgemm
 			*/
 			else {
+				LOG(INFO) << "================= SGEMM OpenCL=======================";
 				//to compaer the result in opencl with cblas
 				float* clc=new float[m*n];
 				cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
@@ -6434,6 +6463,7 @@ struct BLASEngine<cpu> {
 				// the vector which will be send to the devices
 		    cl_mem d_m1, d_m2, d_res;
 
+				/*
 				// Create a cldevice and the clcontext
 		    cldevice = create_device();
 		    clcontext = clCreateContext(NULL, 1, &cldevice, NULL, NULL, &clerr);
@@ -6443,6 +6473,7 @@ struct BLASEngine<cpu> {
 		    }
 				// creates a clprogram and build it
 		    clprogram = build_program(clcontext, cldevice, PROGRAM_FILE);
+				*/
 				// Create the data buffers size
 		    unsigned long int m1size = sizeof(float)*m*k;
 		    unsigned long int m2size = sizeof(float)*n*k;
@@ -6466,15 +6497,15 @@ struct BLASEngine<cpu> {
 		    if(clerr < 0) {
 		       perror("Couldn't create a buffer");
 		       exit(1);
-		    };
-
+		    }
+				/*
 				// Create a command clqueue
 		    clqueue = clCreateCommandQueue(clcontext, cldevice, 0, &clerr);
 		    if(clerr < 0) {
 
 		       perror("Couldn't create a command clqueue");
 		       exit(1);
-		    };
+		    }
 
 				// Create a clkernel
 		    clkernel = clCreateKernel(clprogram, KERNEL_FUNC, &clerr);
@@ -6482,7 +6513,8 @@ struct BLASEngine<cpu> {
 		       perror("Couldn't create a clkernel ^^^^");
 					 LOG(INFO) << "the error num is clerr = " << clerr;
 		       exit(1);
-		    };
+		    }
+				*/
 				const int M = m;
 				const int N = n;
 				const int K = k;
@@ -6517,13 +6549,13 @@ struct BLASEngine<cpu> {
 		    }
 
 				// Deallocating resources
-		    clReleaseKernel(clkernel);
+		    //clReleaseKernel(clkernel);
 		    clReleaseMemObject(d_m1);
 		    clReleaseMemObject(d_m2);
 		    clReleaseMemObject(d_res);
-		    clReleaseCommandQueue(clqueue);
-		    clReleaseProgram(clprogram);
-		    clReleaseContext(clcontext);
+		    //clReleaseCommandQueue(clqueue);
+		    //clReleaseProgram(clprogram);
+		    //clReleaseContext(clcontext);
 
 				//check the result:
 				int tt;
@@ -24217,6 +24249,7 @@ int MXPredCreate(const char* symbol_json_str,
                  const mx_uint* input_shape_indptr,
                  const mx_uint* input_shape_data,
                  PredictorHandle* out) {
+	initOpenCL();
   MXAPIPredictor* ret = new MXAPIPredictor();
   API_BEGIN();
   Symbol sym;
