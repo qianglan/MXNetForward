@@ -14,5 +14,5 @@ __kernel void myGEMM(const int M, const int N, const int K,
         acc += A[k*M + local_index] * B[group_index*K + k];
     }
       // Store the result
-    C[group_index*M + local_index] += acc;
+    C[group_index*M + local_index] = acc;
 }

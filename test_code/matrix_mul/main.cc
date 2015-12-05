@@ -12,9 +12,9 @@
 #define KERNEL_FUNC "myGEMM"
 using namespace std;
 
-int M[8]={2916,625,144,144,144,144,144,1000};
-int N[8]={64,192,96,160,144,160,256,1};
-int K[8]={363,576,1728,864,1440,1296,1440,256};
+int M[9]={2,2916,625,144,144,144,144,144,1000};
+int N[9]={2,64,192,96,160,144,160,256,1};
+int K[9]={2,363,576,1728,864,1440,1296,1440,256};
 int asize=0;
 int bsize=0;
 int csize=0;
@@ -25,6 +25,8 @@ cl_program clprogram;
 cl_kernel clkernel;
 cl_command_queue clqueue;
 cl_int cli, clj, clerr;
+
+
 
 /**
 *  Find a GPU or CPU (cldevice) which is available for the host returning
@@ -148,24 +150,31 @@ void initOpenCL(){
 
 
 
-void initABC(float* a,float* b,int t){
+void initABC(float* a,float* b,float*c,float* clc,int t){
   int i=0;
   sleep(1);
   srand((unsigned)time(0));
   for (i=0;i<asize;i++)
-    a[i]=rand()/100000000.0;
+    a[i]=(float)(rand()/1000000000.0);
   for (i=0;i<bsize;i++)
-    b[i]=rand()/100000000.0;
-  //for (i=0;i<M[t]*N[t];i++)
-    //c[i]=rand()/1000.0;
-  cout << "init the matrix A ,B Bsuccess.." << "A[" << 7 << "]= " <<a[7] <<"  B[" << 7 << "]= " <<b[7] << endl;
+    b[i]=(float)(rand()/1000000000.0);
+    /*
+  for (i=0;i<M[t]*N[t];i++){
+    c[i]=(float)(rand()/RAND_MAX);
+    clc[i]=c[i];
+
+  }
+  */
+  cout.precision(8);
+  cout << "init the matrix A ,B Bsuccess.." << "A[" << 1 << "]= " <<a[1] <<"  B[" << 1 << "]= " <<b[1] << "  C[" << 1 << "]= " <<c[1] << endl;
 }
 
 int main(){
   int call = 0;
   initOpenCL();
+  cout.precision(8);
   cout << "====Begin the test: ========================================" << endl;
-  for (call=0;call<8;call++){
+  for (call=0;call<9;call++){
     cout << "test " << call << ":  " << endl;
     asize=M[call]*K[call];
     bsize=N[call]*K[call];
@@ -175,7 +184,7 @@ int main(){
     float* C = new float[csize];
     float* clc = new float[csize];
 
-    initABC(A,B,call);
+    initABC(A,B,C,clc,call);
     // use mygemm to do
     my_sgemm(false,false,M[call],N[call],K[call],1,A,0,B,0,0.0,C,0);
     //use cl to do it
@@ -249,13 +258,14 @@ int main(){
     //check the result:
     int tt;
     for (tt=0;tt<M[call]*N[call];tt=tt+1){
-      if (fabs(clc[tt]-C[tt])<10e-4)
+      if (fabs(clc[tt]-C[tt])<10e-8)
         continue;
       else
         break;
     }
 
     if (tt!=M[call]*N[call]){
+      cout.precision(8);
       cout  << "OpenCL get the wrong answer!!!  TT = " << tt << "  in C:" << C[tt] << "  in clc:" << clc[tt] << endl;
     }
     else
