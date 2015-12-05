@@ -6438,27 +6438,39 @@ struct BLASEngine<cpu> {
                           const float *A, int lda, const float *B, int ldb,
                       		float beta, float *C, int ldc) {
 
-			if ( transa==true ){
+			if (1){
 				LOG(INFO) << "================= SGEMM CBLAS=======================";
-    		cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
-                	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+    		//cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
+        //        	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+				double start=timing();
 				//my_sgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc);
+				cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
+                	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+				double end=timing();
+				LOG(INFO) << "SGEMM CBLAS time: " << end-start;
 			}
 
 			/*added by shiyang
 			*using OpenCL to do sgemm
 			*/
-			else {
+			if (transa==false){
 				LOG(INFO) << "================= SGEMM OpenCL=======================";
 				//to compaer the result in opencl with cblas
 				float* clc=new float[m*n];
+				//cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
+        //        	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
+
 				cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
                 	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-
-				//my_sgemm(transa,transb,m,n,k,alpha,A,lda,B,ldb,beta,C,ldc);
 				// variables to the number of threads in one block
 				// and total numbers of threads, respectively
 
+				float* temp_a = (float*) A;
+				float* temp_b = (float*) B;
+				float* temp_c = (float*) clc;
+
+
+				double start = timing();
 				unsigned long int local_size, global_size;
 				// the vector which will be send to the devices
 		    cl_mem d_m1, d_m2, d_res;
@@ -6483,9 +6495,7 @@ struct BLASEngine<cpu> {
 		    global_size = m*n;
 		    // defines the number of threads in one block
 		    local_size = m;
-				float* temp_a = (float*) A;
-				float* temp_b = (float*) B;
-				float* temp_c = (float*) clc;
+
 
 				// create the data buffers to be sent to devices
 		    d_m1 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
@@ -6531,6 +6541,8 @@ struct BLASEngine<cpu> {
 		       perror("Couldn't create a clkernel argument");
 		       exit(1);
 		    }
+
+
 				// Enqueue the created clkernel
 		    clerr = clEnqueueNDRangeKernel(clqueue, clkernel, 1, NULL, &global_size,
 		          &local_size, 0, NULL, NULL);
@@ -6557,6 +6569,9 @@ struct BLASEngine<cpu> {
 		    //clReleaseProgram(clprogram);
 		    //clReleaseContext(clcontext);
 
+
+				double end = timing();
+				LOG(INFO) << "SGEMM opencl time: " << end- start ;
 				//check the result:
 				int tt;
 				for (tt=0;tt<m*n;tt=tt+1){
