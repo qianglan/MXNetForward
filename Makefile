@@ -1,4 +1,4 @@
-CC = g++
+CC = arm-linux-androideabi-g++
 CFLAGS += -g -std=c++11 -Wno-unknown-pragmas -Wall 
 
 INC +=
