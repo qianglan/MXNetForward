@@ -93,7 +93,7 @@ cl_device_id create_device() {
       exit(1);
    }
    // Try to access a GPU
-   clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &dev, NULL);
+   clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &dev, NULL);
    if(clerr == CL_DEVICE_NOT_FOUND) {
       //printf("GPU not found , using CPU\n");
       // if can't. Try to access a CPU
@@ -6495,7 +6495,6 @@ struct BLASEngine<cpu> {
 		    global_size = m*n;
 		    // defines the number of threads in one block
 		    local_size = m;
-
 
 				// create the data buffers to be sent to devices
 		    d_m1 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
