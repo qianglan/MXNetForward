@@ -10,9 +10,19 @@ __kernel void myGEMM(const int M, const int N, const int K,
 
     // Compute a single element (loop over K)
     float acc = 0.0f;
-    for (int k=0; k<K; k++) {
-        acc += A[k*M + local_index] * B[group_index*K + k];
-    }
+    //for (int k=0; k<K; k++) {
+    //    acc += A[k*M + local_index] * B[group_index*K + k];
+    //}
+
       // Store the result
-    C[group_index*M + local_index] = acc;
+    //C[group_index*M + local_index] = acc;
+    for (int n=0;n<N;n++){
+      for (int m=0;m<M;m++){
+        float acc=0.0f;
+        for (int k=0;k<K;k++){
+          acc+=A[m+k*M]*B[n*K+k];
+        }
+        C[n*M+m]=acc;
+      }
+    }
 }

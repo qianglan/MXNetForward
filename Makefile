@@ -9,8 +9,8 @@ INC +=
 #LIB += -lOpenCL
 LIB += #-lblas -lrt
 
-CFLAGS += -I${OPENBLAS_ROOT}  #-mhard-float #-I./ 
-LIB1 += #-L./lib  -lOpenCL
+CFLAGS += -I${OPENBLAS_ROOT} -I./  #-mhard-float #
+LIB1 += -L./lib  -lOpenCL
 LIB2 += -L${OPENBLAS_ROOT} -lopenblas #-Wl,--no-warn-mismatch -lm_hard
 LIB2 += #${OPENBLAS_ROOT}/libopenblas.a
 
