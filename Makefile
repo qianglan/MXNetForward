@@ -1,6 +1,6 @@
 CC = arm-linux-androideabi-g++
 #CC = g++
-CFLAGS += -O3 -std=c++11  -D_NDK_MATH_NO_SOFTFP=1 #-fPIC -D_NDK_MATH_NO_SOFTFP=1
+CFLAGS += -O3 -std=c++11  #-D_NDK_MATH_NO_SOFTFP=1 #-fPIC -D_NDK_MATH_NO_SOFTFP=1
 #-Wno-unknown-pragmas -Wall
 export OPENBLAS_ROOT=`pwd`/OpenBLAS
 
@@ -9,9 +9,9 @@ INC +=
 #LIB += -lOpenCL
 LIB += #-lblas -lrt
 
-CFLAGS += #-I${OPENBLAS_ROOT}  #-mhard-float #-I./ 
+CFLAGS += -I${OPENBLAS_ROOT}  #-mhard-float #-I./ 
 LIB1 += #-L./lib  -lOpenCL
-LIB2 += #-L${OPENBLAS_ROOT} -lopenblas -Wl,--no-warn-mismatch -lm_hard
+LIB2 += -L${OPENBLAS_ROOT} -lopenblas #-Wl,--no-warn-mismatch -lm_hard
 LIB2 += #${OPENBLAS_ROOT}/libopenblas.a
 
 
