@@ -1,6 +1,6 @@
-#define MSHADOW_STAND_ALONE 0
+#define MSHADOW_STAND_ALONE 1
 #define MSHADOW_USE_SSE 0
-#define MSHADOW_USE_CBLAS 1
+#define MSHADOW_USE_CBLAS 0
 
 #if defined(__MACH__)
 #include <mach/clock.h>
@@ -21,7 +21,7 @@
 #include <array>
 #include <assert.h>
 #include <atomic>
-#include <cblas.h>
+//#include <cblas.h>
 #include <cctype>
 #include <cfloat>
 #include <climits>
