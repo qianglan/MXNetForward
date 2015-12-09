@@ -3,31 +3,7 @@ __kernel void myGEMM(const int M, const int N, const int K,
                       const __global float* A,
                       const __global float* B,
                       __global float* C,int transA) {
-
     /*
-    // Thread identifiers
-    const int group_index = get_group_id(0);
-    const int local_index = get_local_id(0);
-
-    // Compute a single element (loop over K)
-    float acc = 0.0f;
-    //for (int k=0; k<K; k++) {
-    //    acc += A[k*M + local_index] * B[group_index*K + k];
-    //}
-
-      // Store the result
-    //C[group_index*M + local_index] = acc;
-    for (int n=0;n<N;n++){
-      for (int m=0;m<M;m++){
-        float acc=0.0f;
-        for (int k=0;k<K;k++){
-          acc+=A[m+k*M]*B[n*K+k];
-        }
-        C[n*M+m]=acc;
-      }
-    }
-    */
-
     const int group_index_0 = get_group_id(0);
     const int group_index_1 = get_group_id(1);
 
@@ -38,7 +14,69 @@ __kernel void myGEMM(const int M, const int N, const int K,
     }
 
     C[group_index_1*M+group_index_0] = acc;
+    */
+
+    //try to use float4
+    const int group_index_0 = get_group_id(0);
+    const int group_index_1 = get_group_id(1);
 
 
+    float4 sum = (float4)0.0f;
+    float4 matrixARow = (float4)1.0f;
+    uint aOffset = group_index_0;
+    uint fillFlag = K%4;
+    B += group_index_1*K;
+    if (fillFlag==0){
+    //K can be divied by 4
+      for(int i = 0; i < K; i+=4)
+      {
+        /* code */
+        //get 4 elements of A in a row
+        matrixARow.x = A[aOffset];
+        aOffset += M;
+        //fillFlag =0;
 
+        matrixARow.y = A[aOffset];
+        aOffset += M;
+
+        matrixARow.z = A[aOffset];
+        aOffset += M;
+
+        matrixARow.w = A[aOffset];
+        aOffset += M;
+
+        sum += vload4(0,B)*matrixARow;
+        B += 4;
+      }
+      C[group_index_1*M+group_index_0] = sum.x + sum.y +sum.z +sum.w;
+    }
+    else{
+    //K can't be divied by 4 , left fillFlag nums behind
+      for(int i = 0; i < K - fillFlag; i+=4)
+      {
+        /* code */
+        //get 4 elements of A in a row
+        matrixARow.x = A[aOffset];
+        aOffset += M;
+        //fillFlag =0;
+
+        matrixARow.y = A[aOffset];
+        aOffset += M;
+
+        matrixARow.z = A[aOffset];
+        aOffset += M;
+
+        matrixARow.w = A[aOffset];
+        aOffset += M;
+
+        sum += vload4(0,B)*matrixARow;
+        B += 4;
+      }
+      //compute the rest part
+      for (int m =0;m<fillFlag;m++)
+      {
+        sum.x += B[m]*A[aOffset+m];
+      }
+      C[group_index_1*M+group_index_0] = sum.x + sum.y +sum.z +sum.w;
+    }
 }
