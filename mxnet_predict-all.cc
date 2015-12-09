@@ -6522,7 +6522,7 @@ struct BLASEngine<cpu> {
 
 
 																double start = timing();
-																const size_t local_size=1, global_size=1;
+																const size_t local_size[2]={1,1}, global_size[2]={m,n};
 																// the vector which will be send to the devices
 														    cl_mem d_m1, d_m2, d_res;
 
@@ -6594,8 +6594,8 @@ struct BLASEngine<cpu> {
 
 
 																// Enqueue the created clkernel
-														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel, 1, NULL, &global_size,
-														          &local_size, 0, NULL, NULL);
+														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel, 2, NULL, global_size,
+														          local_size, 0, NULL, NULL);
 														    if(clerr < 0) {
 														       perror("Couldn't enqueue the clkernel PORRA");
 																	 LOG(INFO) << "the error num is clerr = " << clerr;
