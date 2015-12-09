@@ -6489,7 +6489,7 @@ struct BLASEngine<cpu> {
                           int m, int n, int k, float alpha,
                           const float *A, int lda, const float *B, int ldb,
                           float beta, float *C, int ldc) {
-														if (1){
+															if (1){
 																LOG(INFO) << "================= SGEMM CBLAS=======================";
 												    		//cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
 												        //        	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
@@ -6508,13 +6508,6 @@ struct BLASEngine<cpu> {
 																LOG(INFO) << "================= SGEMM OpenCL=======================";
 																//to compaer the result in opencl with cblas
 																float* clc=new float[m*n];
-																//cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
-												        //        	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-
-																cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
-												                	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
-																// variables to the number of threads in one block
-																// and total numbers of threads, respectively
 
 																float* temp_a = (float*) A;
 																float* temp_b = (float*) B;
@@ -6526,26 +6519,13 @@ struct BLASEngine<cpu> {
 																// the vector which will be send to the devices
 														    cl_mem d_m1, d_m2, d_res;
 
-																/*
-																// Create a cldevice and the clcontext
-														    cldevice = create_device();
-														    clcontext = clCreateContext(NULL, 1, &cldevice, NULL, NULL, &clerr);
-														    if(clerr < 0) {
-														       perror("Couldn't create a clcontext");
-														       exit(1);
-														    }
-																// creates a clprogram and build it
-														    clprogram = build_program(clcontext, cldevice, PROGRAM_FILE);
-																*/
+
 																// Create the data buffers size
 														    unsigned long int m1size = sizeof(float)*m*k;
 														    unsigned long int m2size = sizeof(float)*n*k;
 														    unsigned long int res_size = sizeof(float)*m*n;
 
-																// defines the total number of threads
-														    //global_size = m*n;
-														    // defines the number of threads in one block
-														    //local_size = m;
+
 
 																// create the data buffers to be sent to devices
 														    d_m1 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
@@ -6558,23 +6538,7 @@ struct BLASEngine<cpu> {
 														       perror("Couldn't create a buffer");
 														       exit(1);
 														    }
-																/*
-																// Create a command clqueue
-														    clqueue = clCreateCommandQueue(clcontext, cldevice, 0, &clerr);
-														    if(clerr < 0) {
 
-														       perror("Couldn't create a command clqueue");
-														       exit(1);
-														    }
-
-																// Create a clkernel
-														    clkernel = clCreateKernel(clprogram, KERNEL_FUNC, &clerr);
-														    if(clerr < 0) {
-														       perror("Couldn't create a clkernel ^^^^");
-																	 LOG(INFO) << "the error num is clerr = " << clerr;
-														       exit(1);
-														    }
-																*/
 																const int M = m;
 																const int N = n;
 																const int K = k;
@@ -25462,6 +25426,11 @@ int MXPredForward(PredictorHandle handle) {
   API_BEGIN();
   p->exec->Forward(false);
   API_END();
+	//Deallocating resources
+	clReleaseKernel(clkernel);
+	clReleaseCommandQueue(clqueue);
+	clReleaseProgram(clprogram);
+	clReleaseContext(clcontext);
 }
 
 int MXPredPartialForward(PredictorHandle handle, int step, int* step_left) {
