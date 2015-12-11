@@ -6516,7 +6516,7 @@ struct BLASEngine<cpu> {
 
 																double start = timing();
 																//const size_t local_size[2]={1,1}, global_size[2]={m,n};
-																const size_t local_size = 40;
+																const size_t local_size = 32;
 																size_t globalsize = n;
 																if (n%local_size != 0)
 																	globalsize = n + local_size - n%local_size;
