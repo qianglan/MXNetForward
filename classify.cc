@@ -42,6 +42,7 @@ int main(){
 
 	//read symbol
 	ifstream ifile1("./raw/symbol.json");
+	//ifstream ifile1("./raw/Inception_BN-symbol.json");
 	ostringstream buf1;
 	char ch1;
 	while (buf1&&ifile1.get(ch1))
@@ -55,6 +56,7 @@ int main(){
 
 	//read params
 	ifstream ifile2("./raw/params");
+	//ifstream ifile2("./raw/Inception_BN-0039.params");
 	ostringstream buf2;
 	char ch2;
 	int num=0;

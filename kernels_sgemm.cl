@@ -3,6 +3,24 @@ __kernel void myGEMM(const int M, const int N, const int K,
                       const __global float* A,
                       const __global float* B,
                       __global float* C,int transA) {
+
+    const int group_index = get_group_id(0);
+    const int local_index = get_local_id(0);
+    const int l0size = get_local_size(0);
+
+    int local_cols = group_index*l0size + local_index;
+    if ( local_cols < N){
+
+      for (int i = 0;i < M;i++){
+        float acc = 0.0f;
+        for (int j = 0;j < K;j++){
+          acc += A[i + j* M]*B[local_cols*K + j];
+        }
+        C[i + local_cols*M] = acc;
+      }
+    }
+
+
     /*
     const int group_index_0 = get_group_id(0);
     const int group_index_1 = get_group_id(1);
@@ -16,6 +34,7 @@ __kernel void myGEMM(const int M, const int N, const int K,
     C[group_index_1*M+group_index_0] = acc;
     */
 
+    /*
     //try to use float4
     const int group_index_0 = get_group_id(0);
     const int group_index_1 = get_group_id(1);
@@ -30,7 +49,7 @@ __kernel void myGEMM(const int M, const int N, const int K,
     //K can be divied by 4
       for(int i = 0; i < K; i+=4)
       {
-        /* code */
+
         //get 4 elements of A in a row
         matrixARow.x = A[aOffset];
         aOffset += M;
@@ -54,7 +73,7 @@ __kernel void myGEMM(const int M, const int N, const int K,
     //K can't be divied by 4 , left fillFlag nums behind
       for(int i = 0; i < K - fillFlag; i+=4)
       {
-        /* code */
+
         //get 4 elements of A in a row
         matrixARow.x = A[aOffset];
         aOffset += M;
@@ -79,4 +98,5 @@ __kernel void myGEMM(const int M, const int N, const int K,
       }
       C[group_index_1*M+group_index_0] = sum.x + sum.y +sum.z +sum.w;
     }
+    */
 }

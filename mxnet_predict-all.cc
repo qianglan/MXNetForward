@@ -92,11 +92,11 @@ cl_device_id create_device() {
       exit(1);
    }
    // Try to access a GPU
-   clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &dev, NULL);
+   clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &dev, NULL);
    if(clerr == CL_DEVICE_NOT_FOUND) {
       printf("GPU not found , using CPU\n");
       // if can't. Try to access a CPU
-      clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_GPU, 1, &dev, NULL);
+      clerr = clGetDeviceIDs(platform, CL_DEVICE_TYPE_CPU, 1, &dev, NULL);
    }
    // If there's an error finish the clprogram
    if(clerr < 0) {
@@ -6515,7 +6515,13 @@ struct BLASEngine<cpu> {
 
 
 																double start = timing();
-																const size_t local_size[2]={1,1}, global_size[2]={m,n};
+																//const size_t local_size[2]={1,1}, global_size[2]={m,n};
+																const size_t local_size = 40;
+																size_t globalsize = n;
+																if (n%local_size != 0)
+																	globalsize = n + local_size - n%local_size;
+																const size_t global_size = globalsize;
+
 																// the vector which will be send to the devices
 														    cl_mem d_m1, d_m2, d_res;
 
@@ -6558,8 +6564,8 @@ struct BLASEngine<cpu> {
 
 
 																// Enqueue the created clkernel
-														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel, 2, NULL, global_size,
-														          local_size, 0, NULL, NULL);
+														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel, 1, NULL, &global_size,
+														          &local_size, 0, NULL, NULL);
 														    if(clerr < 0) {
 														       perror("Couldn't enqueue the clkernel PORRA");
 																	 LOG(INFO) << "the error num is clerr = " << clerr;
