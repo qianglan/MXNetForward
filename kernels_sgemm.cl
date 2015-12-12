@@ -5,7 +5,7 @@ __kernel void myGEMM(const int M, const int N, const int K,
                       __global float* C,int transA,
                       __local float* dataCacheA) {
 
-    const int gid = get_group_id(0);
+    const int gid = get_global_id(0);
     const int lid = get_local_id(0);
     const int lsize = get_local_size(0);
     int resultIndex = gid*M;
@@ -17,7 +17,8 @@ __kernel void myGEMM(const int M, const int N, const int K,
         //use local Memory to cache a_trans's entire col
         int offset = j*K;
         for (int k = lid;k < K;k += lsize ){
-          dataCacheA[k] = A[k+offset];
+          //dataCacheA[k] = A[k+offset];
+          *((__local float*)&dataCacheA[k]) = *((const __global float*)&A[k+offset]);
         }
         barrier( CLK_LOCAL_MEM_FENCE );
 
