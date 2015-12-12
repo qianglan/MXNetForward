@@ -2,67 +2,61 @@
 __kernel void myGEMM(const int M, const int N, const int K,
                       const __global float* A,
                       const __global float* B,
-                      __global float* C,int transA) {
+                      __global float* C,int transA,
+                      __local float* dataCacheA) {
 
-    const int group_index = get_group_id(0);
-    const int local_index = get_local_id(0);
-    const int l0size = get_local_size(0);
+    const int gid = get_group_id(0);
+    const int lid = get_local_id(0);
+    const int lsize = get_local_size(0);
+    int resultIndex = gid*M;
+    int iters = 0;
+    int fillFlag = K%4;
 
-    float4 sum = (float4)0.0f;
-    float4 matrixARow = (float4)1.0f;
-    uint aOffset = 0;
-    uint fillFlag = K%4;
-
-
-    // the col of this work item
-    int local_cols = group_index*l0size + local_index;
-    int local_cols_B = local_cols*K;
-    int local_cols_C = local_cols*M;
-    //get the woring item
-    if ( local_cols < N){
-      //for every element in clo local_cols
-      for (int i = 0;i < M;i++){
-        sum = (float4)0.0f;
-        matrixARow = (float4)0.0f;
-        aOffset = i;
-        //K can be divied by 4
-        if (fillFlag == 0){
-          for (int j=0;j<K;j+=4){
-            //get 4 elements of A in a row
-            matrixARow.x = A[aOffset];
-            aOffset+=M;
-            matrixARow.y = A[aOffset];
-            aOffset+=M;
-            matrixARow.z = A[aOffset];
-            aOffset+=M;
-            matrixARow.w = A[aOffset];
-            aOffset+=M;
-            sum += vload4(0,B+local_cols_B+j)*matrixARow;
-          }
-          C[i + local_cols_C] = sum.x + sum.y +sum.z+sum.w;
+    if (gid < N){
+      for(int j=0;j<M;j++){
+        //use local Memory to cache a_trans's entire col
+        int offset = j*K;
+        for (int k = lid;k < K;k += lsize ){
+          dataCacheA[k] = A[k+offset];
         }
-        //K can't be divied by 4 , left fillFlag nums behind
-        else
-        {
-          for (int j=0;j<K - fillFlag;j+=4){
-            //get 4 elements of A in a row
-            matrixARow.x = A[aOffset];
-            aOffset+=M;
-            matrixARow.y = A[aOffset];
-            aOffset+=M;
-            matrixARow.z = A[aOffset];
-            aOffset+=M;
-            matrixARow.w = A[aOffset];
-            aOffset+=M;
-            sum += vload4(0,B+local_cols_B+j)*matrixARow;
+        barrier( CLK_LOCAL_MEM_FENCE );
+
+
+        int indexB = gid*K;
+        int indexA = 0;
+        float sum =0.0f;
+        if (fillFlag==0){
+          for (int h =0;h<K;h+=4){
+            //sum +=dot(vload4(0,indexB),vload4(0,indexA));
+            float4 tmpb = (*((__global float4*)&B[indexB]));
+            float4 tmpa = (*((__local float4*)&dataCacheA[indexA]));
+            sum += tmpa.x * tmpb.x;
+            sum += tmpa.y * tmpb.y;
+            sum += tmpa.z * tmpb.z;
+            sum += tmpa.w * tmpb.w;
+            //sum += dot(tmpa,tmpb);
+            indexA+=4;
+            indexB+=4;
           }
-          //compute the rest part
+        }
+        else{
+          for(int h=0;h<K-fillFlag;h+=4){
+            float4 tmpb = (*((__global float4*)&B[indexB]));
+            float4 tmpa = (*((__local float4*)&dataCacheA[indexA]));
+            //sum += dot(tmpa,tmpb);
+            sum += tmpa.x * tmpb.x;
+            sum += tmpa.y * tmpb.y;
+            sum += tmpa.z * tmpb.z;
+            sum += tmpa.w * tmpb.w;
+            indexA+=4;
+            indexB+=4;
+          }
           for (int r=0;r<fillFlag;r++){
-            sum.x += B[local_cols_B + K - fillFlag +r]*A[aOffset+r*M];
+            sum += B[indexB+r]*dataCacheA[indexA+r];
           }
-          C[i + local_cols_C] = sum.x + sum.y +sum.z+sum.w;
         }
+        C[resultIndex+j]=sum;
+        barrier(CLK_LOCAL_MEM_FENCE);
       }
     }
-
 }

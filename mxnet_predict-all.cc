@@ -173,8 +173,8 @@ cl_program build_program(cl_context ctx, cl_device_id dev, const char* filename)
 // Declaration of OpenCL structures (global)
 cl_device_id cldevice;
 cl_context clcontext;
-cl_program clprogram;
-cl_kernel clkernel;
+cl_program clprogram[2];
+cl_kernel clkernel[2];
 cl_command_queue clqueue;
 cl_int cli, clj, clerr;
 
@@ -186,8 +186,7 @@ void initOpenCL(){
 		 perror("Couldn't create a clcontext");
 		 exit(1);
 	}
-	// creates a clprogram and build it
-	clprogram = build_program(clcontext, cldevice, PROGRAM_FILE);
+
 	// Create a command clqueue
 	clqueue = clCreateCommandQueue(clcontext, cldevice, 0, &clerr);
 	if(clerr < 0) {
@@ -196,10 +195,21 @@ void initOpenCL(){
 		 exit(1);
 	}
 
-	// Create a clkernel
-	clkernel = clCreateKernel(clprogram, KERNEL_FUNC, &clerr);
+	// Create a clkernel(mul kernel)
+	// creates a clprogram and build it
+	clprogram[0] = build_program(clcontext, cldevice, PROGRAM_FILE);
+	clkernel[0] = clCreateKernel(clprogram[0], KERNEL_FUNC, &clerr);
 	if(clerr < 0) {
-		 perror("Couldn't create a clkernel ^^^^");
+		 perror("Couldn't create a clkernel[0] ^^^^");
+		 //LOG(INFO) << "the error num is clerr = " << clerr;
+		 exit(1);
+	}
+
+	// Create a tranpose kernel
+	clprogram[1] = build_program(clcontext,cldevice,"kernels_transpose.cl");
+	clkernel[1] = clCreateKernel(clprogram[1],"MatrixTranspose",&clerr);
+	if(clerr < 0) {
+		 perror("Couldn't create a clkernel[1] ^^^^");
 		 //LOG(INFO) << "the error num is clerr = " << clerr;
 		 exit(1);
 	}
@@ -6489,6 +6499,7 @@ struct BLASEngine<cpu> {
                           int m, int n, int k, float alpha,
                           const float *A, int lda, const float *B, int ldb,
                           float beta, float *C, int ldc) {
+
 															if (1){
 																LOG(INFO) << "================= SGEMM CBLAS=======================";
 												    		//cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
@@ -6515,12 +6526,10 @@ struct BLASEngine<cpu> {
 
 
 																double start = timing();
-																//const size_t local_size[2]={1,1}, global_size[2]={m,n};
-																const size_t local_size = 32;
-																size_t globalsize = n;
-																if (n%local_size != 0)
-																	globalsize = n + local_size - n%local_size;
-																const size_t global_size = globalsize;
+
+																const int M = m;
+																const int N = n;
+																const int K = k;
 
 																// the vector which will be send to the devices
 														    cl_mem d_m1, d_m2, d_res;
@@ -6530,8 +6539,6 @@ struct BLASEngine<cpu> {
 														    unsigned long int m1size = sizeof(float)*m*k;
 														    unsigned long int m2size = sizeof(float)*n*k;
 														    unsigned long int res_size = sizeof(float)*m*n;
-
-
 
 																// create the data buffers to be sent to devices
 														    d_m1 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
@@ -6544,33 +6551,76 @@ struct BLASEngine<cpu> {
 														       perror("Couldn't create a buffer");
 														       exit(1);
 														    }
+																//transpose A to take use of data locality
+																cl_mem a_trans;
+																a_trans = clCreateBuffer(clcontext, CL_MEM_READ_WRITE, m1size,NULL, &clerr);
 
-																const int M = m;
-																const int N = n;
-																const int K = k;
+																clerr = clSetKernelArg(clkernel[1], 0, sizeof(cl_int),(void*) &M);
+																clerr |= clSetKernelArg(clkernel[1], 1, sizeof(cl_int),(void*) &K);
+																clerr |= clSetKernelArg(clkernel[1], 2, sizeof(cl_mem), &d_m1);
+																clerr |= clSetKernelArg(clkernel[1], 3, sizeof(cl_mem), &a_trans);
+																if(clerr < 0) {
+														       perror("Couldn't create a clkernel[1] argument");
+														       exit(1);
+														    }
+
+
+
+																// Enqueue the created clkernel
+																size_t global_size_trans = k;
+														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel[1], 1, NULL, &global_size_trans,
+														          NULL, 0, NULL, NULL);
+														    if(clerr < 0) {
+														       perror("Couldn't enqueue the clkernel[1] PORRA");
+																	 LOG(INFO) << "the error num is clerr = " << clerr;
+														       exit(1);
+														    }
+																clFinish(clqueue);
+
+																LOG(INFO) << "A transposed !";
+
+
+																//const size_t local_size[2]={1,1}, global_size[2]={m,n};
+																const size_t local_size = 32;
+																size_t globalsize = n;
+																if (n%local_size != 0)
+																	globalsize = n + local_size - n%local_size;
+																const size_t global_size = globalsize;
+
+
+
+
 																int ta=0;
 																if (transa == true) ta=1;
-																clerr = clSetKernelArg(clkernel, 0, sizeof(cl_int),(void*) &M);
-														    clerr |= clSetKernelArg(clkernel, 1, sizeof(cl_int),(void*) &N);
-														    clerr |= clSetKernelArg(clkernel, 2, sizeof(cl_int),(void*) &K);
-																clerr |= clSetKernelArg(clkernel, 3, sizeof(cl_mem), &d_m1);
-														    clerr |= clSetKernelArg(clkernel, 4, sizeof(cl_mem), &d_m2);
-																clerr |= clSetKernelArg(clkernel, 5, sizeof(cl_mem), &d_res);
-																clerr |= clSetKernelArg(clkernel, 6, sizeof(cl_int),(void*) &ta);
+																clerr = clSetKernelArg(clkernel[0], 0, sizeof(cl_int),(void*) &M);
+														    clerr |= clSetKernelArg(clkernel[0], 1, sizeof(cl_int),(void*) &N);
+														    clerr |= clSetKernelArg(clkernel[0], 2, sizeof(cl_int),(void*) &K);
+																//clerr |= clSetKernelArg(clkernel[0], 3, sizeof(cl_mem), &d_m1);
+																clerr |= clSetKernelArg(clkernel[0], 3, sizeof(cl_mem), &a_trans);
+														    clerr |= clSetKernelArg(clkernel[0], 4, sizeof(cl_mem), &d_m2);
+																clerr |= clSetKernelArg(clkernel[0], 5, sizeof(cl_mem), &d_res);
+																clerr |= clSetKernelArg(clkernel[0], 6, sizeof(cl_int),(void*) &ta);
+
+
+																clerr |= clSetKernelArg(clkernel[0], 7, sizeof(cl_float)*k, NULL);
+
+
 																if(clerr < 0) {
-														       perror("Couldn't create a clkernel argument");
+														       perror("Couldn't create a clkernel[0] argument");
 														       exit(1);
 														    }
 
 
 																// Enqueue the created clkernel
-														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel, 1, NULL, &global_size,
+														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel[0], 1, NULL, &global_size,
 														          &local_size, 0, NULL, NULL);
 														    if(clerr < 0) {
-														       perror("Couldn't enqueue the clkernel PORRA");
+														       perror("Couldn't enqueue the clkernel[1] PORRA");
 																	 LOG(INFO) << "the error num is clerr = " << clerr;
 														       exit(1);
 														    }
+
+																clFinish(clqueue);
 
 																// Read the clkernel's output
 														    clerr = clEnqueueReadBuffer(clqueue, d_res, CL_TRUE, 0,
@@ -6585,6 +6635,7 @@ struct BLASEngine<cpu> {
 														    clReleaseMemObject(d_m1);
 														    clReleaseMemObject(d_m2);
 														    clReleaseMemObject(d_res);
+																clReleaseMemObject(a_trans);
 														    //clReleaseCommandQueue(clqueue);
 														    //clReleaseProgram(clprogram);
 														    //clReleaseContext(clcontext);
@@ -6595,7 +6646,7 @@ struct BLASEngine<cpu> {
 																//check the result:
 																int tt;
 																for (tt=0;tt<m*n;tt=tt+1){
-																	if (abs(clc[tt]-C[tt]<10e-3))
+																	if (abs(clc[tt]-C[tt]<10e-2))
 																		continue;
 																	else
 																		break;
@@ -25433,9 +25484,8 @@ int MXPredForward(PredictorHandle handle) {
   p->exec->Forward(false);
   API_END();
 	//Deallocating resources
-	clReleaseKernel(clkernel);
 	clReleaseCommandQueue(clqueue);
-	clReleaseProgram(clprogram);
+	//clReleaseProgram(clprogram[0]);
 	clReleaseContext(clcontext);
 }
 
