@@ -78,13 +78,34 @@ double timing() {
 
 
 //GFLOPS
-void getCompute(int m,int n,int k,double t){
+int BLAS_TOTAL_OPS = 0;
+int CL_TOTAL_OPS =0;
+double BLAS_TIME = 0.0;
+double CL_TIME = 0.0;
+
+void getCompute(bool b ,int m,int n,int k,double t){
 	int op_count = m*n*(k+k-1);
 	double time_s = t/1000;
+
+	if(b){
+		CL_TIME += time_s;
+		CL_TOTAL_OPS += op_count;
+	}
+	else{
+		BLAS_TIME += time_s;
+		BLAS_TOTAL_OPS += op_count;
+	}
 	double compute_power = (op_count/time_s)/1000000000;
 	std::cout << "compute performance : " << compute_power << " GFLOPS" << std::endl;
 }
 
+void getAverageCom()
+{
+	double blas_com = (BLAS_TOTAL_OPS/BLAS_TIME)/1000000000;
+	double cl_com = (CL_TOTAL_OPS/CL_TIME)/1000000000;
+	std::cout << "************AVERAGE COMPUTE POWER***********" << std::endl;
+	std::cout << "BLAS: " << blas_com << " GFLOPS.   OpenCL: " << cl_com << " GFLOPS" << std::endl;
+}
 
 //some functions in OpenCL
 /**
@@ -160,7 +181,7 @@ cl_program build_program(cl_context ctx, cl_device_id dev, const char* filename)
    free(program_buffer);
 
    // Build the read clprogram
-   clerr = clBuildProgram(clprogram, 0, NULL, NULL, NULL, NULL);
+   clerr = clBuildProgram(clprogram, 0, NULL,"-qcom-sched-rule=2", NULL, NULL);
    if(clerr < 0) {
 
       // Find size of log and print to std output
@@ -6520,7 +6541,7 @@ struct BLASEngine<cpu> {
 												                	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 																double end=timing();
 																LOG(INFO) << "SGEMM CBLAS time: " << end-start;
-																getCompute(m,n,k,end-start);
+																getCompute(false,m,n,k,end-start);
 															}
 
 															/*added by shiyang
@@ -6593,7 +6614,7 @@ struct BLASEngine<cpu> {
 
 
 																//const size_t local_size[2]={1,1}, global_size[2]={m,n};
-																const size_t local_size = 32;
+																const size_t local_size = 64;
 																size_t globalsize = n;
 																if (n%local_size != 0)
 																	globalsize = n + local_size - n%local_size;
@@ -6655,7 +6676,7 @@ struct BLASEngine<cpu> {
 
 																//double end = timing();
 																LOG(INFO) << "SGEMM opencl time: " << end- start ;
-																getCompute(m,n,k,end-start);
+																getCompute(true,m,n,k,end-start);
 																//check the result:
 
 																int tt;
@@ -25500,7 +25521,9 @@ int MXPredForward(PredictorHandle handle) {
   MXAPIPredictor* p = static_cast<MXAPIPredictor*>(handle);
   API_BEGIN();
   p->exec->Forward(false);
+	getAverageCom();
   API_END();
+
 	//Deallocating resources
 	clReleaseCommandQueue(clqueue);
 	//clReleaseProgram(clprogram[0]);
