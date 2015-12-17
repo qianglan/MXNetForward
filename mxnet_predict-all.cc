@@ -76,6 +76,16 @@ double timing() {
 // name of the clkernel function
 #define KERNEL_FUNC "myGEMM"
 
+
+//GFLOPS
+void getCompute(int m,int n,int k,double t){
+	int op_count = m*n*(k+k-1);
+	double time_s = t/1000;
+	double compute_power = (op_count/time_s)/1000000000;
+	std::cout << "compute performance : " << compute_power << " GFLOPS" << std::endl;
+}
+
+
 //some functions in OpenCL
 /**
 *  Find a GPU or CPU (cldevice) which is available for the host returning
@@ -6500,7 +6510,7 @@ struct BLASEngine<cpu> {
                           const float *A, int lda, const float *B, int ldb,
                           float beta, float *C, int ldc) {
 
-															if (1){
+															if (true){
 																LOG(INFO) << "================= SGEMM CBLAS=======================";
 												    		//cblas_sgemm(CblasColMajor, GetT(transa), GetT(transb),
 												        //        	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
@@ -6510,11 +6520,13 @@ struct BLASEngine<cpu> {
 												                	m, n, k, alpha, A, lda, B, ldb, beta, C, ldc);
 																double end=timing();
 																LOG(INFO) << "SGEMM CBLAS time: " << end-start;
+																getCompute(m,n,k,end-start);
 															}
 
 															/*added by shiyang
 															*using OpenCL to do sgemm
 															*/
+
 															if (transa==false){
 																LOG(INFO) << "================= SGEMM OpenCL=======================";
 																//to compaer the result in opencl with cblas
@@ -6525,7 +6537,7 @@ struct BLASEngine<cpu> {
 																float* temp_c = (float*) clc;
 
 
-																double start = timing();
+																//double start = timing();
 
 																const int M = m;
 																const int N = n;
@@ -6542,11 +6554,11 @@ struct BLASEngine<cpu> {
 
 																// create the data buffers to be sent to devices
 														    d_m1 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
-														          CL_MEM_COPY_HOST_PTR, m1size, temp_a, &clerr);
+														          CL_MEM_USE_HOST_PTR, m1size, temp_a, &clerr);
 														    d_m2 = clCreateBuffer(clcontext, CL_MEM_READ_ONLY |
-														          CL_MEM_COPY_HOST_PTR, m2size, temp_b, &clerr);
+														          CL_MEM_USE_HOST_PTR, m2size, temp_b, &clerr);
 														    d_res = clCreateBuffer(clcontext, CL_MEM_READ_WRITE |
-														          CL_MEM_COPY_HOST_PTR, res_size, temp_c, &clerr);
+														          CL_MEM_USE_HOST_PTR, res_size, temp_c, &clerr);
 														    if(clerr < 0) {
 														       perror("Couldn't create a buffer");
 														       exit(1);
@@ -6577,7 +6589,7 @@ struct BLASEngine<cpu> {
 														    }
 																clFinish(clqueue);
 
-																LOG(INFO) << "A transposed !";
+																//LOG(INFO) << "A transposed !";
 
 
 																//const size_t local_size[2]={1,1}, global_size[2]={m,n};
@@ -6610,7 +6622,7 @@ struct BLASEngine<cpu> {
 														       exit(1);
 														    }
 
-
+																double start = timing();
 																// Enqueue the created clkernel
 														    clerr = clEnqueueNDRangeKernel(clqueue, clkernel[0], 1, NULL, &global_size,
 														          &local_size, 0, NULL, NULL);
@@ -6629,7 +6641,7 @@ struct BLASEngine<cpu> {
 														       perror("Couldn't read the buffer");
 														       exit(1);
 														    }
-
+																double end = timing();
 																// Deallocating resources
 														    //clReleaseKernel(clkernel);
 														    clReleaseMemObject(d_m1);
@@ -6641,9 +6653,11 @@ struct BLASEngine<cpu> {
 														    //clReleaseContext(clcontext);
 
 
-																double end = timing();
+																//double end = timing();
 																LOG(INFO) << "SGEMM opencl time: " << end- start ;
+																getCompute(m,n,k,end-start);
 																//check the result:
+
 																int tt;
 																for (tt=0;tt<m*n;tt=tt+1){
 																	if (abs(clc[tt]-C[tt]<10e-2))
@@ -6655,8 +6669,11 @@ struct BLASEngine<cpu> {
 																if (tt!=m*n){
 																	LOG(INFO) << "OpenCL get the wrong answer!!!  TT = " << tt << "  in C:" << C[tt] << "  in clc:" << clc[tt];
 																}
+
 																delete clc;
+
 															}
+
   }
   inline static void gemm(Stream<cpu> *stream,
                           bool transa, bool transb,
@@ -25479,6 +25496,7 @@ int MXPredSetInput(PredictorHandle handle,
 }
 
 int MXPredForward(PredictorHandle handle) {
+	//double ts = timing();
   MXAPIPredictor* p = static_cast<MXAPIPredictor*>(handle);
   API_BEGIN();
   p->exec->Forward(false);
@@ -25487,6 +25505,8 @@ int MXPredForward(PredictorHandle handle) {
 	clReleaseCommandQueue(clqueue);
 	//clReleaseProgram(clprogram[0]);
 	clReleaseContext(clcontext);
+	//double te = timing();
+	//LOG(INFO) << "==========using time : " << te-ts;
 }
 
 int MXPredPartialForward(PredictorHandle handle, int step, int* step_left) {
